@@ -1,8 +1,57 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import styles from '../styles/Home.module.css'
+import { useState } from "react";
+import Head from "next/head";
+
+import styles from "../styles/Home.module.css";
+
+interface Event {
+  id: string;
+  title: string;
+}
+
+type Schedule = Map<string, Map<string, Event>>;
 
 export default function Home() {
+  const [date, setDate] = useState<Date>(() => new Date());
+  const [schedule, setSchedule] = useState<Schedule>(() => new Map());
+
+  function handleMonthChange(offset: number) {
+    const draft = new Date(date);
+    draft.setMonth(date.getMonth() + offset);
+    setDate(draft);
+  }
+
+  function handleNewEvent(key: string) {
+    const draft = new Map(schedule);
+
+    if (!draft.has(key)) {
+      draft.set(key, new Map());
+    }
+
+    const day = draft.get(key);
+    const id = String(Date.now());
+    const title = window.prompt("Event Title");
+
+    if (!title) return;
+
+    day.set(id, {
+      id,
+      title,
+    });
+
+    setSchedule(draft);
+  }
+
+  function handleDeleteEvent(key: string, id: string) {
+    const draft = new Map(schedule);
+    const day = draft.get(key)!;
+
+    day.delete(id);
+
+    setSchedule(draft);
+  }
+
+  console.log(schedule);
+
   return (
     <div className={styles.container}>
       <Head>
@@ -12,60 +61,83 @@ export default function Home() {
       </Head>
 
       <main className={styles.main}>
-        <h1 className={styles.title}>
-          Welcome to <a href="https://nextjs.org">Next.js!</a>
-        </h1>
-
-        <p className={styles.description}>
-          Get started by editing{' '}
-          <code className={styles.code}>pages/index.tsx</code>
-        </p>
-
-        <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+        <div
+          style={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "space-between",
+            marginBottom: "12px",
+          }}
+        >
+          <span className={styles.date}>
+            {date.toLocaleString("es-AR", { month: "long", year: "numeric" })}
+          </span>
+          <nav>
+            <button onClick={() => handleMonthChange(-1)}>←</button>
+            <button onClick={() => setDate(new Date())}>TODAY</button>
+            <button onClick={() => handleMonthChange(1)}>→</button>
+          </nav>
+        </div>
+        <div className={styles.calendar}>
+          {Array.from({ length: 7 }, (_, i) => (
+            <div key={i}>
+              {new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                i + 1,
+                0
+              ).toLocaleString("es-AR", { weekday: "long" })}
+            </div>
+          ))}
+          {Array.from(
+            {
+              length: new Date(
+                date.getFullYear(),
+                date.getMonth() + 1,
+                0
+              ).getDate(),
+            },
+            (_, i) => {
+              const key = `${date.getFullYear()}/${date.getMonth()}/${i + 1}`;
+              const events = schedule.get(key);
+              return (
+                <div
+                  onClick={() => handleNewEvent(key)}
+                  key={i}
+                  className={styles.day}
+                >
+                  {i + 1}
+                  {events ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                      }}
+                    >
+                      {Array.from(events.values()).map((event) => (
+                        <div
+                          style={{
+                            backgroundColor: "#ccc",
+                            padding: "2px 6px",
+                          }}
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteEvent(key, event.id);
+                          }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            }
+          )}
         </div>
       </main>
-
-      <footer className={styles.footer}>
-        <a
-          href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Powered by{' '}
-          <span className={styles.logo}>
-            <Image src="/vercel.svg" alt="Vercel Logo" width={72} height={16} />
-          </span>
-        </a>
-      </footer>
     </div>
-  )
+  );
 }
